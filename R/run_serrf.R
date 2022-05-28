@@ -1,10 +1,13 @@
-#' SERRF functions.
+#' @title SERRF functions.
+#' @description A QC based normalization method. Tidymass batch effect remove based on MS1 information of each batch, but SERRF didn't require MS1.
+#' @references https://slfan2013.github.io/SERRF-online/
+#' @author Shawn Wang
+#' \email{shawnwang2016@126.com}
 #' @param obj mass_dataset, An object mass_dataset from massdataset package
 #' @param QC_tag character, QC lable in sample_info column 'class'.
 #' @param detectcores_ratio The ration of cores want to use, Default = 1.
 #' @importFrom data.table as.data.table
 #' @import stats
-#' @import ranger
 #' @importFrom ranger ranger
 #' @importFrom tidyr pivot_longer
 #' @importFrom grDevices boxplot.stats
@@ -13,7 +16,7 @@
 #' @importFrom BiocGenerics intersect
 #' @importFrom dplyr mutate select
 #' @importFrom crayon green bold italic red yellow
-#' @return obj a SERRF normalized mass_dataset.
+#' @return A SERRF normalized mass_dataset.
 
 
 run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
@@ -249,8 +252,6 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
       }
       return(list(normed_train=normed_train,normed_target=normed_target))
     }
-
-
     serrf_normalized = e
     serrf_normalized_modeled = serrfR(train = e_qc, target = e_sample, num = num,batch. = factor(c(p_qc$batch, p_sample$batch)),time. = c(p_qc$time, p_sample$time),sampleType. = c(p_qc$sampleType, p_sample$sampleType),cl)
 
@@ -290,9 +291,6 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
 
       RSDs[[k]] = RSD(serrf_normalized_on_cross_validate$normed_target)
     }
-
-
-
     qc_RSD = apply(do.call("cbind",RSDs),1,mean)
     qc_RSDs[['SERRF']] = qc_RSD
     calculation_times[['SERRF']] = Sys.time() - start

@@ -13,7 +13,7 @@
 #' @importFrom crayon green bold italic red yellow
 #' @importFrom plotly plot_ly
 #' @importFrom massdataset activate_mass_dataset extract_expression_data
-#' @importFrom ggplot geom_point scale_color_manual geom_vline geom_hline geom_abline geom_label xlim ylim labs theme_bw theme element_line element_rect element_text
+#' @importFrom ggplot2 geom_point scale_color_manual geom_vline geom_hline geom_abline geom_label xlim ylim labs theme_bw theme element_line element_rect element_text
 #' @importFrom tidyr pivot_longer
 #' @return rsd_plt a 3D pca
 

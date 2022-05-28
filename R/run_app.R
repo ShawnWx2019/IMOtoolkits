@@ -7,7 +7,7 @@
 #' @export
 #' @importFrom shiny shinyApp
 #' @importFrom golem with_golem_options
-run_app <- function(
+IMO_run_metabo <- function(
   onStart = NULL,
   options = list(),
   enableBookmarking = NULL,
@@ -16,8 +16,8 @@ run_app <- function(
 ) {
   with_golem_options(
     app = shinyApp(
-      ui = app_ui,
-      server = app_server,
+      ui = metabo_ui,
+      server = metabo_server,
       onStart = onStart,
       options = options,
       enableBookmarking = enableBookmarking,
