@@ -1,6 +1,6 @@
 Package: IMOtoolkits
 Title: Interactive multi-omics toolkits.
-Version: 0.0.1.2205
+Version: 0.0.1.220531
 Authors@R: 
     person(given = "Shawn",
            family = "Wang",

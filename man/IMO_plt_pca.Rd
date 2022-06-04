@@ -37,7 +37,4 @@ PCA plot for massdataset.
 }
 \references{
 https://github.com/kevinblighe/PCAtools
-\dontrun{
-IMO_plt_pca(obj = object, tag = group)
-}
 }

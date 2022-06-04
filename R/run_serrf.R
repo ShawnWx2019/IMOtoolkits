@@ -7,16 +7,17 @@
 #' @param QC_tag character, QC lable in sample_info column 'class'.
 #' @param detectcores_ratio The ration of cores want to use, Default = 1.
 #' @importFrom data.table as.data.table
-#' @import stats
+#' @importFrom stats rnorm median sd
 #' @importFrom ranger ranger
 #' @importFrom tidyr pivot_longer
 #' @importFrom grDevices boxplot.stats
 #' @importFrom bootstrap crossval
 #' @importFrom parallel makeCluster detectCores parSapply
-#' @importFrom BiocGenerics intersect
+#' @importFrom BiocGenerics intersect do.call
 #' @importFrom dplyr mutate select
 #' @importFrom crayon green bold italic red yellow
 #' @return A SERRF normalized mass_dataset.
+#' @export
 
 
 run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
@@ -85,7 +86,7 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
   p_validates = list()
   validate_types = NULL
   aggregate_e = function(e_qc,e_sample,e_validates){
-    e = do.call('cbind',c(list(e_qc, e_sample), e_validates))
+    e = BiocGenerics::do.call('cbind',c(list(e_qc, e_sample), e_validates))
     e = e[,order(as.numeric(gsub("p","",colnames(e))))]
     return(e)
   }
@@ -95,11 +96,11 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
   normalized_dataset[['none']] = aggregate_e(e_qc,e_sample,e_validates)
   qc_RSDs[['none']] = RSD(e_qc)
   calculation_times[['none']] = Sys.time() - start
-  cat("<!--------- raw data --------->\n")
-  cat(paste0("Average QC RSD:",signif(median(qc_RSDs[['none']],na.rm = TRUE),4)*100,"%.\n"))
-  cat(paste0("Number of compounds less than 20% QC RSD:",sum(qc_RSDs[['none']]<0.2,na.rm = TRUE),".\n"))
+  message(msg_yes("<!--------- raw data --------->\n"))
+  message(msg_warning(paste0("Average QC RSD:",signif(median(qc_RSDs[['none']],na.rm = TRUE),4)*100,"%.\n")))
+  message(msg_warning(paste0("Number of compounds less than 20% QC RSD:",sum(qc_RSDs[['none']]<0.2,na.rm = TRUE),".\n")))
   normalized_dataset[['SERRF']] = tryCatch({
-    cat("<!--------- SERRF --------->\n(This may take a while...)\n")
+    message(msg_yes("<!--------- SERRF --------->\n(This may take a while...)\n"))
     e_norm = matrix(,nrow=nrow(e),ncol=ncol(e))
     QC.index = p[["sampleType"]]
     batch = p[["batch"]]
@@ -126,14 +127,14 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
           current_batch = levels(batch.)[b]
           ## Imputation of value equals 0
           all[j,batch.%in%current_batch][all[j,batch.%in%current_batch] == 0] =
-            rnorm(
+            stats::rnorm(
               length(all[j,batch.%in%current_batch][all[j,batch.%in%current_batch] == 0]),
               mean = min(all[j,batch.%in%current_batch][!is.na(all[j,batch.%in%current_batch])])+1,
               sd = 0.1*(min(all[j,batch.%in%current_batch][!is.na(all[j,batch.%in%current_batch])])+.1)
             )
           ## Imputation of NA value.
           all[j,batch.%in%current_batch][is.na(all[j,batch.%in%current_batch])] =
-            rnorm(
+            stats::rnorm(
               length(all[j,batch.%in%current_batch][is.na(all[j,batch.%in%current_batch])]),
               mean = 0.5*min(all[j,batch.%in%current_batch][!is.na(all[j,batch.%in%current_batch])])+1,
               sd = 0.1*(min(all[j,batch.%in%current_batch][!is.na(all[j,batch.%in%current_batch])])+.1)
@@ -160,7 +161,7 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
         corrs_target[[current_batch]] = cor(t(target_scale), method = "spearman")
       }
 
-      pred = parSapply(cl, X = 1:nrow(all), function(j,all,batch.,ranger, sampleType., time., num,corrs_train,corrs_target){
+      pred = parallel::parSapply(cl, X = 1:nrow(all), function(j,all,batch.,ranger, sampleType., time., num,corrs_train,corrs_target){
         print(j)
         normalized  = rep(0, ncol(all))
         qc_train_value = list()
@@ -216,7 +217,7 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
             normalized[batch.%in%current_batch] = norm
           }else{
             colnames(train_data) = c("y", paste0("V",1:(ncol(train_data)-1)))
-            model = ranger(y~., data = train_data)
+            model = ranger::ranger(y~., data = train_data)
 
             test_data = data.frame(test_data_x)
             colnames(test_data) = colnames(train_data)[-1]
@@ -294,8 +295,8 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
     qc_RSD = apply(do.call("cbind",RSDs),1,mean)
     qc_RSDs[['SERRF']] = qc_RSD
     calculation_times[['SERRF']] = Sys.time() - start
-    cat(paste0("Average QC RSD:",signif(median(qc_RSDs[['SERRF']],na.rm = TRUE),4)*100,"%.\n"))
-    cat(paste0("Number of compounds less than 20% QC RSD:",sum(qc_RSDs[['SERRF']]<0.2,na.rm = TRUE),".\n"))
+    message(msg_warning(paste0("Average QC RSD:",signif(median(qc_RSDs[['SERRF']],na.rm = TRUE),4)*100,"%.\n")))
+    message(msg_warning(paste0("Number of compounds less than 20% QC RSD:",sum(qc_RSDs[['SERRF']]<0.2,na.rm = TRUE),".\n")))
 
 
     serrf_validates = list()
@@ -309,8 +310,8 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
         colnames(serrf_validates[[validate_type]]) = colnames(e_validates[[validate_type]])
 
         val_RSDs[[validate_type]][['SERRF']] = RSD(serrf_validates[[validate_type]])
-        cat(paste0("Average ",validate_type," RSD:",signif(median( val_RSDs[[validate_type]][['SERRF']],na.rm = TRUE),4)*100,"%.\n"))
-        cat(paste0("Number of compounds less than 20% ",validate_type," RSD:",sum( val_RSDs[[validate_type]][['SERRF']]<0.2,na.rm = TRUE),".\n"))
+        message(msg_warning(paste0("Average ",validate_type," RSD:",signif(median( val_RSDs[[validate_type]][['SERRF']],na.rm = TRUE),4)*100,"%.\n")))
+        message(msg_warning(paste0("Number of compounds less than 20% ",validate_type," RSD:",sum( val_RSDs[[validate_type]][['SERRF']]<0.2,na.rm = TRUE),".\n")))
       }
       aggregate_e(serrf_qc,serrf_sample,serrf_validates)
     }else{
@@ -322,5 +323,6 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
   rownames(normalized_dataset[['SERRF']]) = rownames(normalized_dataset[['none']])
   #return(normalized_dataset)
   obj@expression_data = as.data.frame(normalized_dataset[['SERRF']])
+  message(msg_yes("<!--------- SERRF --------->\n(All task finished...)\n"))
   return(obj)
 }

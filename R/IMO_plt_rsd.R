@@ -16,6 +16,7 @@
 #' @importFrom ggplot2 geom_point scale_color_manual geom_vline geom_hline geom_abline geom_label xlim ylim labs theme_bw theme element_line element_rect element_text
 #' @importFrom tidyr pivot_longer
 #' @return rsd_plt a 3D pca
+#' @export
 
 IMO_plt_rsd = function(obj_old,obj_new,QC_tag,x_loc = c(120,110),y_loc = c(15,110),interactive = F,showImage=T){
   msg_yes = green$bold$italic

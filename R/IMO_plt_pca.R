@@ -14,11 +14,8 @@
 #' @importFrom crayon green bold italic red yellow
 #' @export
 #' @return a list contains pca result and plots
-#' @example
 #' @references https://github.com/kevinblighe/PCAtools
-#' \dontrun{
-#' IMO_plt_pca(obj = object, tag = group)
-#' }
+
 IMO_plt_pca = function(obj,tag,center = T,scale = T,removeVar = .1,interactive = F,showImage = T) {
   ## massages.
   msg_yes = green$bold$italic
