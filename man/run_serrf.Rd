@@ -4,14 +4,14 @@
 \alias{run_serrf}
 \title{SERRF functions.}
 \usage{
-run_serrf(obj, QC_tag, detectcores_ratio = 1)
+run_serrf(obj, QC_tag, cluster_num = 8)
 }
 \arguments{
 \item{obj}{mass_dataset, An object mass_dataset from massdataset package}
 
 \item{QC_tag}{character, QC lable in sample_info column 'class'.}
 
-\item{detectcores_ratio}{The ration of cores want to use, Default = 1.}
+\item{cluster_num}{how may cores do you want to use}
 }
 \value{
 A SERRF normalized mass_dataset.

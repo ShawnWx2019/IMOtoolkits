@@ -5,14 +5,14 @@
 #' \email{shawnwang2016@126.com}
 #' @param obj mass_dataset, An object mass_dataset from massdataset package
 #' @param QC_tag character, QC lable in sample_info column 'class'.
-#' @param detectcores_ratio The ration of cores want to use, Default = 1.
+#' @param cluster_num how may cores do you want to use
 #' @importFrom data.table as.data.table
 #' @importFrom stats rnorm median sd
 #' @importFrom ranger ranger
 #' @importFrom tidyr pivot_longer
 #' @importFrom grDevices boxplot.stats
 #' @importFrom bootstrap crossval
-#' @importFrom parallel makeCluster detectCores parSapply
+#' @importFrom parallel makeCluster parSapply
 #' @importFrom BiocGenerics intersect do.call
 #' @importFrom dplyr mutate select
 #' @importFrom crayon green bold italic red yellow
@@ -20,8 +20,7 @@
 #' @export
 
 
-run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
-  detectcores_ratio = detectcores_ratio
+run_serrf = function(obj,QC_tag,cluster_num = 8) {
   msg_yes = green$bold$italic
   msg_no = red$bold$italic
   msg_warning = yellow$bold$italic
@@ -109,7 +108,7 @@ run_serrf = function(obj,QC_tag,detectcores_ratio = 1) {
     num = 10
     start = Sys.time();
     # setting used cores
-    cl = makeCluster(detectCores() * detectcores_ratio)
+    cl = makeCluster(cluster_num)
     ## functions
     serrfR = function(train = e[,p$sampleType == 'qc'], ## set qc samples as train matrix
                       target = e[,p$sampleType == 'sample'], ## set samples as target matrix
