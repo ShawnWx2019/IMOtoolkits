@@ -15,9 +15,11 @@
 #' @param threads The number of threads
 #' @importFrom magrittr %>%
 #' @importFrom crayon red yellow green bgRed
-#' @importFrom stringr str_detect str_extract
+#' @importFrom stringr str_detect str_extract regex
 #' @importFrom readr cols
 #' @importFrom pbapply pblapply
+#' @importFrom furrr future_map future_map2
+#' @importFrom future plan multisession
 #' @return A databaseClass object.
 #' @seealso The example and demo data of this function can be found
 #' \url{https://tidymass.github.io/metid/articles/metid.html}
@@ -28,10 +30,10 @@ construct_mona_database2 = function(
     creater = "Xiaotao Shen", email = "shenxt1990@163.com", rt = FALSE,
     threads = 5
 ) {
-  mona_database = read_msp_mona2(file = file)
-
+  mona_database = read_msp_mona2(file = file,threads = threads)
+  future::plan(strategy = future::multisession, workers = threads)
   #> Issue1: set rownames of mona_database[[i]]$info
-  mona_database = purrr::map(mona_database,function(x){
+  mona_database = furrr::future_map(mona_database,function(x){
     x$info = data.frame(
       row.names = x$info$info,
       value = x$info$value
@@ -42,10 +44,10 @@ construct_mona_database2 = function(
   })
 
 
-  all_metabolite_names = purrr::map(mona_database, function(x) {
+  all_metabolite_names = furrr::future_map(mona_database, function(x) {
     rownames(x$info)
   }) %>% unlist() %>% unique()
-  metabolite_info = mona_database %>% purrr::map(function(x) {
+  metabolite_info = mona_database %>% furrr::future_map(function(x) {
     x = as.data.frame(x$info)
     new_x = x[, 1]
     names(new_x) = rownames(x)
@@ -125,14 +127,14 @@ construct_mona_database2 = function(
   Spectra.negative = mona_database[negative_idx]
   names(Spectra.positive) = metabolite_info$Lab.ID[positive_idx]
   names(Spectra.negative) = metabolite_info$Lab.ID[negative_idx]
-  Spectra.positive = purrr::map2(.x = Spectra.positive, .y = metabolite_info$Collision_energy[positive_idx],
+  Spectra.positive = furrr::future_map2(.x = Spectra.positive, .y = metabolite_info$Collision_energy[positive_idx],
                                  .f = function(x, y) {
                                    x = x$spec
                                    x = list(x)
                                    names(x) = y
                                    x
                                  })
-  Spectra.negative = purrr::map2(.x = Spectra.negative, .y = metabolite_info$Collision_energy[negative_idx],
+  Spectra.negative = furrr::future_map2(.x = Spectra.negative, .y = metabolite_info$Collision_energy[negative_idx],
                                  .f = function(x, y) {
                                    x = x$spec
                                    x = list(x)

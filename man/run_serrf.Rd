@@ -4,7 +4,7 @@
 \alias{run_serrf}
 \title{SERRF functions.}
 \usage{
-run_serrf(obj, QC_tag, cluster_num = 8)
+run_serrf(obj, QC_tag, cluster_num = 8, seed = 2021)
 }
 \arguments{
 \item{obj}{mass_dataset, An object mass_dataset from massdataset package}
@@ -12,6 +12,8 @@ run_serrf(obj, QC_tag, cluster_num = 8)
 \item{QC_tag}{character, QC lable in sample_info column 'class'.}
 
 \item{cluster_num}{how may cores do you want to use}
+
+\item{seed}{seed for serrf}
 }
 \value{
 A SERRF normalized mass_dataset.

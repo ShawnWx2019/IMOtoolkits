@@ -6,13 +6,17 @@
 #' @param obj mass_dataset, An object mass_dataset from massdataset package
 #' @param QC_tag character, QC lable in sample_info column 'class'.
 #' @param cluster_num how may cores do you want to use
+#' @param seed seed for serrf
 #' @importFrom data.table as.data.table
 #' @importFrom stats rnorm median sd
 #' @importFrom ranger ranger
 #' @importFrom tidyr pivot_longer
 #' @importFrom grDevices boxplot.stats
 #' @importFrom bootstrap crossval
-#' @importFrom parallel makeCluster parSapply
+#' @importFrom furrr future_map_dfc
+#' @importFrom progressr progressor with_progress
+#' @importFrom future plan
+#' @importFrom magrittr %>%
 #' @importFrom BiocGenerics intersect do.call
 #' @importFrom dplyr mutate select
 #' @importFrom crayon green bold italic red yellow
@@ -20,7 +24,7 @@
 #' @export
 
 
-run_serrf = function(obj,QC_tag,cluster_num = 8) {
+run_serrf = function(obj,QC_tag,cluster_num = 8,seed = 2021) {
   msg_yes = green$bold$italic
   msg_no = red$bold$italic
   msg_warning = yellow$bold$italic
@@ -99,6 +103,7 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
   message(msg_warning(paste0("Average QC RSD:",signif(median(qc_RSDs[['none']],na.rm = TRUE),4)*100,"%.\n")))
   message(msg_warning(paste0("Number of compounds less than 20% QC RSD:",sum(qc_RSDs[['none']]<0.2,na.rm = TRUE),".\n")))
   normalized_dataset[['SERRF']] = tryCatch({
+    set.seed(seed = seed)
     message(msg_yes("<!--------- SERRF --------->\n(This may take a while...)\n"))
     e_norm = matrix(,nrow=nrow(e),ncol=ncol(e))
     QC.index = p[["sampleType"]]
@@ -160,8 +165,8 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
         corrs_target[[current_batch]] = cor(t(target_scale), method = "spearman")
       }
 
-      pred = parallel::parSapply(cl, X = 1:nrow(all), function(j,all,batch.,ranger, sampleType., time., num,corrs_train,corrs_target){
-        print(j)
+      get_pred = function(.x) {
+        j  = .x
         normalized  = rep(0, ncol(all))
         qc_train_value = list()
         qc_predict_value = list()
@@ -199,14 +204,14 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
           train_data_x = train_data_x[,!train_NA_index]
           test_data_x = test_data_x[,!train_NA_index]
 
-          if(!class(test_data_x)=="matrix"){
+          if(!"matrix"%in%class(test_data_x)){
             test_data_x = t(test_data_x)
           }
 
           good_column = apply(train_data_x,2,function(x){sum(is.na(x))==0}) & apply(test_data_x,2,function(x){sum(is.na(x))==0})
           train_data_x = train_data_x[,good_column]
           test_data_x = test_data_x[,good_column]
-          if(!class(test_data_x)=="matrix"){
+          if(!"matrix"%in%class(test_data_x)){
             test_data_x = t(test_data_x)
           }
           train_data = data.frame(y = train_data_y,train_data_x )
@@ -226,6 +231,7 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
             norm[!train.index_current_batch=='qc'][norm[!train.index_current_batch=='qc']<0]=e_current_batch[j,!train.index_current_batch=='qc'][norm[!train.index_current_batch=='qc']<0]
             norm[train.index_current_batch=='qc'] = norm[train.index_current_batch=='qc']/(median(norm[train.index_current_batch=='qc'],na.rm=TRUE)/median(all[j,sampleType.=='qc'],na.rm=TRUE))
             norm[!train.index_current_batch=='qc'] = norm[!train.index_current_batch=='qc']/(median(norm[!train.index_current_batch=='qc'],na.rm=TRUE)/median(all[j,!sampleType.=='qc'],na.rm=TRUE))
+            set.seed(seed = seed)
             norm[!is.finite(norm)] = rnorm(length(norm[!is.finite(norm)]),sd = sd(norm[is.finite(norm)],na.rm=TRUE)*0.01)
             out = boxplot.stats(norm, coef = 3)$out
             norm[!train.index_current_batch=='qc'][norm[!train.index_current_batch=='qc']%in%out] = ((e_current_batch[j,!train.index_current_batch=='qc'])-((predict(model,data = test_data)$predictions  + mean(e_current_batch[j, !train.index_current_batch=='qc'],na.rm=TRUE))-(median(all[j,!sampleType.=='qc'],na.rm = TRUE))))[norm[!train.index_current_batch=='qc']%in%out];
@@ -233,8 +239,24 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
             normalized[batch.%in%current_batch] = norm
           }
         }
-        return(normalized)
-      },all,batch.,ranger, sampleType., time., num,corrs_train,corrs_target)
+        df = data.frame(.x = normalized) %>% setNames(.x)
+        return(df)
+      }
+
+      get_pred_progress <- function(all) {
+        p <- progressr::progressor(steps = nrow(all));
+        b = furrr::future_map_dfc(.x = 1:nrow(all),.f = function(.x) {
+          p()
+          a = get_pred(.x)
+          return(a)
+        })
+        return(b)
+      }
+      future::plan("multisession",workers = cluster_num )
+      with_progress({
+        pred = get_pred_progress(all)
+      })
+      names(pred) = c(1:ncol(pred))
       normed = t(pred)
       normed_target = normed[,!sampleType.=='qc']
       for(i in 1:nrow(normed_target)){
@@ -317,7 +339,7 @@ run_serrf = function(obj,QC_tag,cluster_num = 8) {
       aggregate_e(serrf_qc,serrf_sample,NULL)
     }
   }, error = function(error_message){
-    error_message
+    msg_no("something wrong with serrf check your input")
   })
   rownames(normalized_dataset[['SERRF']]) = rownames(normalized_dataset[['none']])
   #return(normalized_dataset)
