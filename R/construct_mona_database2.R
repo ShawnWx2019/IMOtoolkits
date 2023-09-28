@@ -13,6 +13,7 @@
 #' @param email email address.
 #' @param rt Do the metabolites have RT information or not?. If not, set it as FALSE.
 #' @param threads The number of threads
+#' @param ID_prefix The prefix of LabID
 #' @importFrom magrittr %>%
 #' @importFrom crayon red yellow green bgRed
 #' @importFrom stringr str_detect str_extract regex
@@ -28,7 +29,7 @@ construct_mona_database2 = function(
     file, only.remain.ms2 = TRUE, path = ".", version = "0.0.1",
     source = "MoNA", link = "https://mona.fiehnlab.ucdavis.edu/",
     creater = "Xiaotao Shen", email = "shenxt1990@163.com", rt = FALSE,
-    threads = 5
+    threads = 5,ID_prefix = "MoNA"
 ) {
   mona_database = read_msp_mona2(file = file,threads = threads)
   future::plan(strategy = future::multisession, workers = threads)
@@ -68,14 +69,15 @@ construct_mona_database2 = function(
     metabolite_info %>%
     dplyr::select(
       Compound.name = Name,
-      mz = ExactMass, Formula,
+      mz = ExactMass,
+      Formula,
       MoNA.ID = `DB#`,
       dplyr::everything()
     )
   metabolite_info =
     metabolite_info %>%
     dplyr::mutate(
-      Lab.ID = paste("MoNA", seq_len(nrow(metabolite_info)), sep = "_"),
+      Lab.ID = paste(ID_prefix, seq_len(nrow(metabolite_info)), sep = "_"),
       RT = NA,
       CAS.ID = NA,
       HMDB.ID = NA,
@@ -143,7 +145,13 @@ construct_mona_database2 = function(
                                  })
   database.info <- list(Version = version, Source = source,
                         Link = link, Creater = creater, Email = email, RT = rt)
-  spectra.info <- as.data.frame(metabolite_info)
+  spectra.info <- as.data.frame(metabolite_info) %>%
+    mutate(
+      mz = as.numeric(mz),
+      MW = as.numeric(MW),
+      `Num Peaks` = as.numeric(`Num Peaks`),
+      PrecursorMZ = as.numeric(PrecursorMZ)
+    )
   rm(list = "metabolite_info")
   Spectra <- list(Spectra.positive = Spectra.positive, Spectra.negative = Spectra.negative)
   database <- new(Class = "databaseClass", database.info = database.info,

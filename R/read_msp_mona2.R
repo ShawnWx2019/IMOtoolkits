@@ -51,7 +51,9 @@ read_msp_mona2 = function (file, threads = 3) {
                                         dplyr::top_n(1,V2) %>%
                                         ungroup %>%
                                         dplyr::rename(info = V1,  value = V2) %>%
-                                        as.data.frame()
+                                        mutate(info = str_remove(info,"^ "),
+                                               value = str_remove(value,"^ ")) %>%
+                                        as.data.frame() %>% distinct()
                                       spec = temp[-grep(":", temp, value = FALSE)]
                                       spec = stringr::str_split(spec, " ") %>%
                                         do.call(rbind, .) %>%
