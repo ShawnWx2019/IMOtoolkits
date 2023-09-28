@@ -3,17 +3,17 @@ library(bslib)
 library(bs4Dash)
 library(shinyjqui)
 library(thematic)
-x1_tmp <- read.csv(
-  '~/My_Repo/F-box/02.metadata/exp_mat.csv'
-  )
-x2_tmp <- read.csv(
-  '~/My_Repo/F-box/02.metadata/sample_info2.csv'
-)
-imo_demo_data<- list(
-  exp_mat = x1_tmp,
-  sample_info = x2_tmp
-)
-
+# x1_tmp <- read.csv(
+#   '~/My_Repo/F-box/02.metadata/exp_mat.csv'
+#   )
+# x2_tmp <- read.csv(
+#   '~/My_Repo/F-box/02.metadata/sample_info2.csv'
+# )
+# imo_demo_data<- list(
+#   exp_mat = x1_tmp,
+#   sample_info = x2_tmp
+# )
+#
 
 # homepage ----------------------------------------------------------------
 
